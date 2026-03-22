@@ -18,12 +18,22 @@ enum EventMode {
   ONLINE
   OFFLINE
 }
+enum EventVisibility {
+  PUBLIC
+  PRIVATE
+}
 
 // Event Modal Ready
 model Event {
   id          String     @id @default(cuid())
   name        String
   timezone    DateTime
+  coverurl    String 
+  thumbnail   String
+  venuename   String
+  address     String
+  latitude    String
+  longitutde  String
   type        EventType
   mode        EventMode
   description String
@@ -35,6 +45,7 @@ model Event {
   price       Float?
   tickets     Ticket[] 
   passes      Pass[]
+  visibility  EventVisibility
   attendees   Attendee[]
 }
 // Ticket model Ready
@@ -75,7 +86,6 @@ model Pass {
   status     String   @default("ACTIVE")
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
-  qrCode QRCode
 }
 // checkin modal ready
 model CheckIn {
@@ -96,14 +106,13 @@ model Payment {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
-// Qr Code Modal Ready
+// QrCode Modal Ready
 model QRCode {
   id        String   @id @default(cuid())
   code      String   @unique
-  ticketId  String?  @unique
-  ticket    Ticket?  @relation(fields: [ticketId], references: [id])
-  passId    String?  @unique
-  pass      Pass?    @relation(fields: [passId], references: [id])
+  ticketId  String  @unique
+  ticket    Ticket  @relation(fields: [ticketId], references: [id])
+  passId    String  @unique
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 }
