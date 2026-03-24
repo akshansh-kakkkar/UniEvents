@@ -8,6 +8,67 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+// betterauth models
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified Boolean   @default(false)
+  image         String?
+  role          UserRole  @default(USER) // ADMIN, HOST, USER
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  verifications Verification[]
+  attendees     Attendee[]
+  hostedEvents  Event[]   // Events created/hosted by this user
+}
+
+model Session {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                 String    @id @default(cuid())
+  userId             String
+  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider           String
+  providerAccountId  String
+  refreshToken       String?
+  accessToken        String?
+  expiresAt          Int?
+  tokenType          String?
+  scope              String?
+  idToken            String?
+  sessionState       String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Verification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String    @unique
+  type      String    // "email" | "phone" | "twoFactor"
+  expiresAt DateTime
+  createdAt DateTime  @default(now())
+
+  @@index([userId])
+}
 
 enum EventType {
   FREE
@@ -23,18 +84,43 @@ enum EventVisibility {
   PRIVATE
 }
 
+enum UserRole {
+  ADMIN
+  HOST
+  USER
+}
+
+enum PaymentGateway {
+  RAZORPAY
+}
+
+enum PassStatus {
+  ACTIVE
+  USED
+  CANCELLED
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+}
+
 // Event Modal Ready
 model Event {
   id          String     @id @default(cuid())
   name        String
   slug        String     @unique
+  userId      String?    // User who created/hosts this event
+  user        User?      @relation("hostedEvents", fields: [userId], references: [id], onDelete: SetNull)
   timezone    DateTime
   coverurl    String 
   thumbnail   String
   venuename   String
   address     String
   latitude    String
-  longitutde  String
+  longitude   String
   type        EventType
   mode        EventMode
   description String
@@ -43,77 +129,117 @@ model Event {
   location    String
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  price       Float?
-  tickets     Ticket[] 
+  price       Int?       
+  tickets     Ticket[]
   passes      Pass[]
   visibility  EventVisibility
   attendees   Attendee[]
+  orders      Order[]
+
+  @@index([slug])
+  @@index([userId])
+  @@index([createdAt])
 }
+// Order model - Represents a collection of Tickets purchased
+model Order {
+  id        String   @id @default(cuid())
+  attendeeId String
+  attendee  Attendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  eventId   String
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tickets   Ticket[]
+  payment   Payment?
+  status    String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([attendeeId])
+  @@index([eventId])
+}
+
 // Ticket model Ready
 model Ticket {
-  id        String    @id @default(cuid())
-  eventId   String
-  event     Event     @relation(fields: [eventId], references: [id])
-  price     Float
-  quantity  Int @default(1)
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  payments  Payment[]
-  qrCode    QRCode?
-  maxqantity Int
+  id         String    @id @default(cuid())
+  orderId    String?
+  order      Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  eventId    String
+  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  price      Int       // Amount in cents for precision
+  quantity   Int       @default(1)
+  maxQuantity Int?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  
+  @@index([orderId])
+  @@index([eventId])
 }
 // Attendee Modal Ready
 model Attendee {
   id        String   @id @default(cuid())
+  userId    String?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
   name      String
-  email     String   @unique
+  email     String
   eventId   String
-  event     Event    @relation(fields: [eventId], references: [id])
+  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
   checkIns CheckIn[]
   passes   Pass[]
+  orders   Order[]
+
+  @@unique([eventId, email])
+  @@index([userId])
+  @@index([eventId])
 }
 
-// Pass modal Ready
+// Pass modal Ready - Merged with QRCode (QR generation is client-side)
 model Pass {
-  id         String   @id @default(cuid())
+  id         String     @id @default(cuid())
   eventId    String
-  event      Event    @relation(fields: [eventId], references: [id])
+  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   attendeeId String
-  attendee   Attendee @relation(fields: [attendeeId], references: [id])
+  attendee   Attendee   @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  ticketId   String?
+  ticket     Ticket?    @relation(fields: [ticketId], references: [id], onDelete: SetNull)
   type       String
-  status     String   @default("ACTIVE")
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  status     PassStatus @default(ACTIVE)
+  
+  // QR Code data - generated client-side, stored server-side for reference
+  code       String?    @unique
+  
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+
+  @@index([eventId])
+  @@index([attendeeId])
+  @@index([ticketId])
 }
 // checkin modal ready
 model CheckIn {
   id         String   @id @default(cuid())
   attendeeId String
-  attendee   Attendee @relation(fields: [attendeeId], references: [id])
+  attendee   Attendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
   timestamp  DateTime @default(now())
   method     String
+
+  @@index([attendeeId])
+  @@index([timestamp])
 }
 // Payment modal Ready
 model Payment {
-  id        String   @id @default(cuid())
-  ticketId  String
-  ticket    Ticket   @relation(fields: [ticketId], references: [id])
-  amount    Float
-  status    String   @default("PENDING")
-  provider  String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-// QrCode Modal Ready
-model QRCode {
-  id        String   @id @default(cuid())
-  code      String   @unique
-  ticketId  String  @unique
-  ticket    Ticket  @relation(fields: [ticketId], references: [id])
-  passId    String  @unique
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id            String         @id @default(cuid())
+  orderId       String         @unique
+  order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount        Decimal        @db.Decimal(10, 2) // Amount in cents for precision
+  transactionId String?        @unique // External payment provider transaction ID
+  status        PaymentStatus  @default(PENDING)
+  gateway       PaymentGateway? // Payment gateway used
+  provider      String?        // E.g., "stripe", "paypal"
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@index([orderId])
+  @@index([transactionId])
 }
