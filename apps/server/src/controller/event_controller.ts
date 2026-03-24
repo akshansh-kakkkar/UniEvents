@@ -10,14 +10,14 @@ const eventSchema = z.object({
 	venuename: z.string(),
 	address: z.string(),
 	latitude: z.string(),
-	longitutde: z.string(),
+	longitude: z.string(),
 	type: z.enum(["FREE", "PAID"]),
 	mode: z.enum(["ONLINE", "OFFLINE"]),
 	description: z.string(),
 	startDate: z.coerce.date(),
 	endDate: z.coerce.date(),
 	location: z.string(),
-	price: z.number().optional(),
+	price: z.coerce.number().int().nonnegative().optional(),
 	visibility: z.enum(["PUBLIC", "PRIVATE"]),
 	slug: z.string().optional(),
 });
@@ -108,8 +108,9 @@ export const getEventById = async (req: Request, res: Response) => {
 export const getEventBySlug = async (req: Request, res: Response) => {
 	const slug = req.params.slug as string;
 	try {
-		const event = await prisma.event.findUnique({
-			where: { slug },
+		const whereBySlug = { slug } as unknown as Record<string, string>;
+		const event = await prisma.event.findFirst({
+			where: whereBySlug,
 			include: {
 				tickets: true,
 				_count: {
@@ -117,6 +118,7 @@ export const getEventBySlug = async (req: Request, res: Response) => {
 				},
 			},
 		});
+
 		if (!event) {
 			return res.status(404).json({
 				message: "Event not found",

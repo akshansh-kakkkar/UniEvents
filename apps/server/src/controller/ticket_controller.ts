@@ -4,9 +4,10 @@ import { z } from "zod";
 
 const createTicketSchema = z.object({
 	eventId: z.string(),
-	price: z.number(),
-	quantity: z.number().int().optional(),
-	maxqantity: z.number().int(),
+	orderId: z.string().optional(),
+	price: z.coerce.number().int().nonnegative(),
+	quantity: z.coerce.number().int().positive().optional(),
+	maxQuantity: z.coerce.number().int().positive().optional(),
 });
 
 const updateTicketSchema = createTicketSchema.partial();

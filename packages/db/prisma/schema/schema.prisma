@@ -23,7 +23,7 @@ model User {
   sessions      Session[]
   verifications Verification[]
   attendees     Attendee[]
-  hostedEvents  Event[]   // Events created/hosted by this user
+  hostedEvents  Event[]   @relation("hostedEvents") // Events created/hosted by this user
 }
 
 model Session {
@@ -164,6 +164,7 @@ model Ticket {
   order      Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
   eventId    String
   event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  passes     Pass[]
   price      Int       // Amount in cents for precision
   quantity   Int       @default(1)
   maxQuantity Int?

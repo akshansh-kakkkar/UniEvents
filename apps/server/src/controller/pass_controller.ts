@@ -5,7 +5,10 @@ import { z } from "zod";
 const createPassSchema = z.object({
 	eventId: z.string(),
 	attendeeId: z.string(),
+	ticketId: z.string().optional(),
 	type: z.string(),
+	status: z.enum(["ACTIVE", "USED", "CANCELLED"]).optional(),
+	code: z.string().optional(),
 });
 
 // create pass controller ready
@@ -70,7 +73,7 @@ export const verifyPass = async (req: Request, res: Response) => {
 		const [updatedPass, checkIn] = await prisma.$transaction([
 			prisma.pass.update({
 				where: { id },
-				data: { status: "CHECKED_IN" },
+				data: { status: "USED" },
 			}),
 			prisma.checkIn.create({
 				data: {
