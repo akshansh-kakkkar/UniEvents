@@ -4,22 +4,22 @@ import { z } from "zod";
 
 const eventSchema = z.object({
 	name: z.string(),
-	timezone: z.coerce.date(),
-	coverurl: z.string().url(),
+	slug: z.string().optional(),
+	userId: z.string().optional(),
+	coverUrl: z.string().url(),
 	thumbnail: z.string().url(),
-	venuename: z.string(),
+	venueName: z.string(),
 	address: z.string(),
 	latitude: z.string(),
 	longitude: z.string(),
-	type: z.enum(["FREE", "PAID"]),
-	mode: z.enum(["ONLINE", "OFFLINE"]),
-	description: z.string(),
+	timezone: z.coerce.date(),
 	startDate: z.coerce.date(),
 	endDate: z.coerce.date(),
-	location: z.string(),
-	price: z.coerce.number().int().nonnegative().optional(),
+	type: z.enum(["FREE", "PAID"]),
+	mode: z.enum(["ONLINE", "OFFLINE"]),
 	visibility: z.enum(["PUBLIC", "PRIVATE"]),
-	slug: z.string().optional(),
+	status: z.enum(["DRAFT", "PUBLISHED", "CANCELLED", "COMPLETED"]).optional(),
+	description: z.string(),
 });
 
 const slugify = (text: string) => {
@@ -44,10 +44,15 @@ export const createEvent = async (req: Request, res: Response) => {
 			});
 		}
 
-		const data = {
-			...validation.data,
+		const { userId, ...eventData } = validation.data;
+		const data: any = {
+			...eventData,
 			slug: validation.data.slug || slugify(validation.data.name),
 		};
+
+		if (userId) {
+			data.user = { connect: { id: userId } };
+		}
 
 		const event = await prisma.event.create({
 			data,
@@ -144,9 +149,16 @@ export const updateEvent = async (req: Request, res: Response) => {
 			});
 		}
 
+		const { userId, ...updateData } = validation.data;
+		const data: any = { ...updateData };
+
+		if (userId) {
+			data.user = { connect: { id: userId } };
+		}
+
 		const event = await prisma.event.update({
 			where: { id },
-			data: validation.data,
+			data,
 		});
 		res.json(event);
 	} catch (error) {
