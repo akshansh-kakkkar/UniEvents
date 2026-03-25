@@ -8,66 +8,15 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
-// betterauth models
-model User {
-  id            String    @id @default(cuid())
-  name          String?
-  email         String    @unique
-  emailVerified Boolean   @default(false)
-  image         String?
-  role          UserRole  @default(USER) // ADMIN, HOST, USER
-  createdAt     DateTime  @default(now())
-  updatedAt     DateTime  @updatedAt
 
-  accounts      Account[]
-  sessions      Session[]
-  verifications Verification[]
-  attendees     Attendee[]
-  hostedEvents  Event[]   // Events created/hosted by this user
-}
+// ─────────────────────────────────────────────
+// ENUMS
+// ─────────────────────────────────────────────
 
-model Session {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String    @unique
-  expiresAt DateTime
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-
-  @@index([userId])
-}
-
-model Account {
-  id                 String    @id @default(cuid())
-  userId             String
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  provider           String
-  providerAccountId  String
-  refreshToken       String?
-  accessToken        String?
-  expiresAt          Int?
-  tokenType          String?
-  scope              String?
-  idToken            String?
-  sessionState       String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
-
-  @@unique([provider, providerAccountId])
-  @@index([userId])
-}
-
-model Verification {
-  id        String    @id @default(cuid())
-  userId    String
-  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  token     String    @unique
-  type      String    // "email" | "phone" | "twoFactor"
-  expiresAt DateTime
-  createdAt DateTime  @default(now())
-
-  @@index([userId])
+enum UserRole {
+  ADMIN
+  HOST
+  USER
 }
 
 enum EventType {
@@ -79,25 +28,41 @@ enum EventMode {
   ONLINE
   OFFLINE
 }
+
 enum EventVisibility {
   PUBLIC
   PRIVATE
 }
 
-enum UserRole {
-  ADMIN
-  HOST
-  USER
+enum EventStatus {
+  DRAFT
+  PUBLISHED
+  CANCELLED
+  COMPLETED
 }
 
-enum PaymentGateway {
-  RAZORPAY
+enum OrderStatus {
+  PENDING
+  COMPLETED
+  CANCELLED
+}
+
+enum PassType {
+  GENERAL
+  VIP
+  BACKSTAGE
+  SPEAKER
 }
 
 enum PassStatus {
   ACTIVE
   USED
   CANCELLED
+}
+
+enum CheckInMethod {
+  QR_SCAN
+  MANUAL
 }
 
 enum PaymentStatus {
@@ -107,136 +72,294 @@ enum PaymentStatus {
   REFUNDED
 }
 
-// Event Modal Ready
+enum PaymentGateway {
+  RAZORPAY
+}
+
+// ─────────────────────────────────────────────
+// AUTH MODELS (BetterAuth compatible)
+// ─────────────────────────────────────────────
+
+model User {
+  id            String   @id @default(cuid())
+  name          String?
+  email         String   @unique
+  emailVerified Boolean  @default(false)
+  image         String?
+  role          UserRole @default(USER)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  accounts      Account[]
+  sessions      Session[]
+  verifications Verification[]
+  attendees     Attendee[]
+  hostedEvents  Event[]        @relation("hostedEvents")
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Account {
+  id                String   @id @default(cuid())
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  provider          String
+  providerAccountId String
+  refreshToken      String?
+  accessToken       String?
+  expiresAt         Int?
+  tokenType         String?
+  scope             String?
+  idToken           String?
+  sessionState      String?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+// identifier = email or phone, no userId required — supports pre-signup verification
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String   // email or phone number
+  token      String   @unique
+  type       String   // "email" | "phone" | "twoFactor"
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+
+  @@index([identifier])
+}
+
+// ─────────────────────────────────────────────
+// EVENT
+// ─────────────────────────────────────────────
+
 model Event {
-  id          String     @id @default(cuid())
+  id          String          @id @default(cuid())
   name        String
-  slug        String     @unique
-  userId      String?    // User who created/hosts this event
-  user        User?      @relation("hostedEvents", fields: [userId], references: [id], onDelete: SetNull)
-  timezone    DateTime
-  coverurl    String 
+  slug        String          @unique
+  userId      String?
+  user        User?           @relation("hostedEvents", fields: [userId], references: [id], onDelete: SetNull)
+
+  // Media
+  coverUrl    String
   thumbnail   String
-  venuename   String
+
+  // Venue
+  venueName   String
   address     String
   latitude    String
   longitude   String
-  type        EventType
-  mode        EventMode
-  description String
+
+  // Scheduling — timezone as IANA string e.g. "Asia/Kolkata"
+  timezone    String
   startDate   DateTime
   endDate     DateTime
-  location    String
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  price       Int?       
-  tickets     Ticket[]
-  passes      Pass[]
+
+  // Classification
+  type        EventType
+  mode        EventMode
   visibility  EventVisibility
+  status      EventStatus     @default(DRAFT)
+
+  description String
+
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  ticketTiers TicketTier[]
+  passes      Pass[]
   attendees   Attendee[]
   orders      Order[]
 
   @@index([slug])
   @@index([userId])
+  @@index([startDate])
   @@index([createdAt])
 }
-// Order model - Represents a collection of Tickets purchased
-model Order {
-  id        String   @id @default(cuid())
-  attendeeId String
-  attendee  Attendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
-  eventId   String
-  event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  tickets   Ticket[]
-  payment   Payment?
-  status    String   @default("PENDING") // PENDING, COMPLETED, CANCELLED
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  @@index([attendeeId])
+// ─────────────────────────────────────────────
+// TICKET TIER  (the "type" of ticket e.g. GA, VIP)
+// ─────────────────────────────────────────────
+
+model TicketTier {
+  id          String   @id @default(cuid())
+  eventId     String
+  event       Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name        String           // e.g. "General Admission", "VIP"
+  description String?
+  price       Int              // in minor units (paise / cents). 0 for free tiers
+  maxQuantity Int              // total available
+  soldCount   Int      @default(0) // maintained via application logic or triggers
+
+  salesStart  DateTime?
+  salesEnd    DateTime?
+
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  tickets     Ticket[]
+
   @@index([eventId])
 }
 
-// Ticket model Ready
+// ─────────────────────────────────────────────
+// TICKET  (one issued ticket instance per attendee)
+// ─────────────────────────────────────────────
+
 model Ticket {
-  id         String    @id @default(cuid())
-  orderId    String?
-  order      Order?    @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  eventId    String
-  event      Event     @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  price      Int       // Amount in cents for precision
-  quantity   Int       @default(1)
-  maxQuantity Int?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @updatedAt
-  
+  id           String     @id @default(cuid())
+  orderId      String
+  order        Order      @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  eventId      String
+  event        Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  tierId       String
+  tier         TicketTier @relation(fields: [tierId], references: [id], onDelete: Restrict)
+
+  // Snapshot price at time of purchase — tier price may change later
+  pricePaid    Int
+
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  pass         Pass?
+
   @@index([orderId])
   @@index([eventId])
+  @@index([tierId])
 }
-// Attendee Modal Ready
+
+// ─────────────────────────────────────────────
+// ATTENDEE
+// ─────────────────────────────────────────────
+
 model Attendee {
   id        String   @id @default(cuid())
   userId    String?
   user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
-  name      String
-  email     String
   eventId   String
   event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  name      String
+  email     String
+  phone     String?
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  checkIns CheckIn[]
-  passes   Pass[]
-  orders   Order[]
+  checkIns  CheckIn[]
+  passes    Pass[]
+  orders    Order[]
 
   @@unique([eventId, email])
   @@index([userId])
   @@index([eventId])
 }
 
-// Pass modal Ready - Merged with QRCode (QR generation is client-side)
+// ─────────────────────────────────────────────
+// ORDER
+// ─────────────────────────────────────────────
+
+model Order {
+  id          String      @id @default(cuid())
+  attendeeId  String
+  attendee    Attendee    @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  eventId     String
+  event       Event       @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  status      OrderStatus @default(PENDING)
+
+  // Soft delete — preserves records for accounting/audit
+  deletedAt   DateTime?
+
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  tickets     Ticket[]
+  payment     Payment?
+
+  @@index([attendeeId])
+  @@index([eventId])
+}
+
+// ─────────────────────────────────────────────
+// PASS  (entry pass per ticket, QR generated client-side)
+// ─────────────────────────────────────────────
+
 model Pass {
   id         String     @id @default(cuid())
   eventId    String
   event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   attendeeId String
   attendee   Attendee   @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
-  ticketId   String?
-  ticket     Ticket?    @relation(fields: [ticketId], references: [id], onDelete: SetNull)
-  type       String
+  ticketId   String     @unique  // 1-to-1: one pass per ticket
+  ticket     Ticket     @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+
+  type       PassType   @default(GENERAL)
   status     PassStatus @default(ACTIVE)
-  
-  // QR Code data - generated client-side, stored server-side for reference
-  code       String?    @unique
-  
+
+  // Unique scannable code — generated client-side, stored for server-side validation
+  code       String     @unique
+
   createdAt  DateTime   @default(now())
   updatedAt  DateTime   @updatedAt
 
   @@index([eventId])
   @@index([attendeeId])
-  @@index([ticketId])
+  @@index([code])
 }
-// checkin modal ready
+
+// ─────────────────────────────────────────────
+// CHECK-IN
+// ─────────────────────────────────────────────
+
 model CheckIn {
-  id         String   @id @default(cuid())
+  id         String        @id @default(cuid())
   attendeeId String
-  attendee   Attendee @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
-  timestamp  DateTime @default(now())
-  method     String
+  attendee   Attendee      @relation(fields: [attendeeId], references: [id], onDelete: Cascade)
+  eventId    String        // direct index for event-level check-in dashboards
+
+  timestamp  DateTime      @default(now())
+  method     CheckInMethod
 
   @@index([attendeeId])
+  @@index([eventId])
   @@index([timestamp])
 }
-// Payment modal Ready
+
+// ─────────────────────────────────────────────
+// PAYMENT
+// ─────────────────────────────────────────────
+
 model Payment {
   id            String         @id @default(cuid())
   orderId       String         @unique
   order         Order          @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  amount        Decimal        @db.Decimal(10, 2) // Amount in cents for precision
-  transactionId String?        @unique // External payment provider transaction ID
+
+  amount        Int            // in minor units (paise / cents)
+  currency      String         @default("INR")
+
+  gateway       PaymentGateway
+  transactionId String?        @unique // provider's transaction/payment ID
+  gatewayMeta   Json?          // raw webhook payload or provider response for audit
+
   status        PaymentStatus  @default(PENDING)
-  gateway       PaymentGateway? // Payment gateway used
-  provider      String?        // E.g., "stripe", "paypal"
+
+  // Soft delete — never hard-delete payment records
+  deletedAt     DateTime?
+
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
