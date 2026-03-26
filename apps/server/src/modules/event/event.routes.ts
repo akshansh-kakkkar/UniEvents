@@ -1,4 +1,5 @@
 import { Router } from "express";
+import { requireAuth } from "../../middleware/auth";
 import {
 	createEvent,
 	deleteEvent,
@@ -6,15 +7,15 @@ import {
 	getEventBySlug,
 	getEvents,
 	updateEvent,
-} from "../controller/event_controller";
+} from "./event.controller";
 
 const router: Router = Router();
 
-router.post("/events", createEvent);
+router.post("/events", requireAuth, createEvent);
 router.get("/events", getEvents);
 router.get("/events/:id", getEventById);
 router.get("/events/slug/:slug", getEventBySlug);
-router.patch("/events/:id", updateEvent);
-router.delete("/events/:id", deleteEvent);
+router.patch("/events/:id", requireAuth, updateEvent);
+router.delete("/events/:id", requireAuth, deleteEvent);
 
 export default router;
