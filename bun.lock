@@ -16,7 +16,7 @@
         "husky": "^9.1.7",
         "lint-staged": "^16.1.2",
         "turbo": "^2.8.12",
-        "typescript": "^5",
+        "typescript": "^6",
       },
     },
     "apps/server": {
@@ -37,7 +37,7 @@
         "@types/express": "^5.0.1",
         "@voltaze/config": "workspace:*",
         "tsdown": "^0.16.5",
-        "typescript": "^5",
+        "typescript": "^6",
       },
     },
     "apps/web": {
@@ -64,7 +64,7 @@
         "@types/react-dom": "catalog:",
         "@voltaze/config": "workspace:*",
         "tailwindcss": "catalog:",
-        "typescript": "^5",
+        "typescript": "^6",
       },
     },
     "packages/config": {
@@ -84,7 +84,7 @@
       "devDependencies": {
         "@voltaze/config": "workspace:*",
         "prisma": "^7.2.0",
-        "typescript": "^5",
+        "typescript": "^6",
       },
     },
     "packages/env": {
@@ -99,7 +99,7 @@
       "devDependencies": {
         "@types/bun": "catalog:",
         "@voltaze/config": "workspace:*",
-        "typescript": "^5",
+        "typescript": "^6",
       },
     },
     "packages/schema": {
@@ -133,7 +133,7 @@
         "@types/react-dom": "catalog:",
         "@voltaze/config": "workspace:*",
         "tailwindcss": "catalog:",
-        "typescript": "^5.9.3",
+        "typescript": "^6",
       },
     },
   },
@@ -1300,7 +1300,7 @@
 
     "type-is": ["type-is@2.0.1", "", { "dependencies": { "content-type": "^1.0.5", "media-typer": "^1.1.0", "mime-types": "^3.0.0" } }, "sha512-OZs6gsjF4vMp32qrCbiVSkrFmXtG/AZhY3t0iAMrMBiAZyV9oALtXO8hsrHbMXF9x6L3grlFuwW2oAz7cav+Gw=="],
 
-    "typescript": ["typescript@5.9.3", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-jl1vZzPDinLr9eUt3J/t7V6FgNEw9QjvBPdysz9KfQDD41fQrC2Y4vKQdiaUpFT4bXlb1RHhLpp8wtm6M5TgSw=="],
+    "typescript": ["typescript@6.0.2", "", { "bin": { "tsc": "bin/tsc", "tsserver": "bin/tsserver" } }, "sha512-bGdAIrZ0wiGDo5l8c++HWtbaNCWTS4UTv7RaTH/ThVIgjkveJt83m74bBHMJkuCbslY8ixgLBVZJIOiQlQTjfQ=="],
 
     "unconfig-core": ["unconfig-core@7.5.0", "", { "dependencies": { "@quansync/fs": "^1.0.0", "quansync": "^1.0.0" } }, "sha512-Su3FauozOGP44ZmKdHy2oE6LPjk51M/TRRjHv2HNCWiDvfvCoxC2lno6jevMA91MYAdCdwP05QnWdWpSbncX/w=="],
 

@@ -47,6 +47,8 @@ export const sessionSchema = z.object({
 	expiresAt: z.date(),
 	createdAt: z.date(),
 	updatedAt: z.date(),
+	ipAddress: z.string().nullable(),
+	userAgent: z.string().nullable(),
 }) satisfies z.ZodType<Session>;
 
 export const createSessionSchema = sessionSchema.omit({
@@ -58,15 +60,15 @@ export const createSessionSchema = sessionSchema.omit({
 export const accountSchema = z.object({
 	id: z.string().cuid(),
 	userId: z.string().cuid(),
-	provider: z.string(),
-	providerAccountId: z.string(),
+	accountId: z.string(),
+	providerId: z.string(),
 	refreshToken: z.string().nullable(),
 	accessToken: z.string().nullable(),
-	expiresAt: z.number().int().nullable(),
-	tokenType: z.string().nullable(),
+	accessTokenExpiresAt: z.date().nullable(),
+	refreshTokenExpiresAt: z.date().nullable(),
 	scope: z.string().nullable(),
 	idToken: z.string().nullable(),
-	sessionState: z.string().nullable(),
+	password: z.string().nullable(),
 	createdAt: z.date(),
 	updatedAt: z.date(),
 }) satisfies z.ZodType<Account>;
@@ -80,15 +82,16 @@ export const createAccountSchema = accountSchema.omit({
 export const verificationSchema = z.object({
 	id: z.string().cuid(),
 	identifier: z.string(),
-	token: z.string(),
-	type: z.string(),
+	value: z.string(),
 	expiresAt: z.date(),
 	createdAt: z.date(),
+	updatedAt: z.date(),
 }) satisfies z.ZodType<Verification>;
 
 export const createVerificationSchema = verificationSchema.omit({
 	id: true,
 	createdAt: true,
+	updatedAt: true,
 });
 
 export type CreateUserInput = z.infer<typeof createUserSchema>;
