@@ -7,7 +7,7 @@ const ulidSchema = z
 	.string()
 	.regex(/^[0-9A-HJKMNP-TV-Z]{26}$/i, "Invalid ULID");
 
-const userRoleSchema = z.enum(["ADMIN", "HOST", "USER"]);
+export const userRoleSchema = z.enum(["ADMIN", "HOST", "USER"]);
 
 export const userSchema = z.object({
 	id: ulidSchema,
@@ -19,6 +19,52 @@ export const userSchema = z.object({
 	createdAt: z.date(),
 	updatedAt: z.date(),
 }) satisfies z.ZodType<User>;
+
+export const publicUserSchema = userSchema.pick({
+	id: true,
+	name: true,
+	email: true,
+	emailVerified: true,
+	image: true,
+	role: true,
+	createdAt: true,
+	updatedAt: true,
+});
+
+export const authRequestContextSchema = z.object({
+	userId: ulidSchema,
+	sessionId: ulidSchema,
+	email: z.string().email(),
+	role: userRoleSchema,
+});
+
+export const authenticatedActorSchema = authRequestContextSchema.pick({
+	userId: true,
+	role: true,
+});
+
+export const authRequestMetaSchema = z.object({
+	ipAddress: z.string().optional().nullable(),
+	userAgent: z.string().optional().nullable(),
+});
+
+export const accessTokenPayloadSchema = z.object({
+	sub: z.string(),
+	sessionId: z.string(),
+	email: z.string().email(),
+	role: userRoleSchema,
+	type: z.literal("access"),
+	iat: z.number().int().nonnegative(),
+	exp: z.number().int().positive(),
+	iss: z.string().min(1),
+});
+
+export const createAccessTokenInputSchema = z.object({
+	userId: ulidSchema,
+	sessionId: ulidSchema,
+	email: z.string().email(),
+	role: userRoleSchema,
+});
 
 export const createUserSchema = userSchema
 	.omit({
@@ -120,21 +166,23 @@ export const logoutSchema = refreshSessionSchema;
 export const authTokensSchema = z.object({
 	accessToken: z.string().min(1),
 	refreshToken: z.string().min(1),
-	accessTokenExpiresAt: z.string().datetime(),
-	refreshTokenExpiresAt: z.string().datetime(),
+	accessTokenExpiresAt: z.iso.datetime(),
+	refreshTokenExpiresAt: z.iso.datetime(),
 });
 
 export const authResponseSchema = z.object({
-	user: userSchema,
+	user: publicUserSchema,
 	tokens: authTokensSchema,
 });
 
-export type CreateUserInput = z.infer<typeof createUserSchema>;
-export type UpdateUserInput = z.infer<typeof updateUserSchema>;
-export type CreateSessionInput = z.infer<typeof createSessionSchema>;
-export type CreateAccountInput = z.infer<typeof createAccountSchema>;
-export type CreateVerificationInput = z.infer<typeof createVerificationSchema>;
+export type PublicUser = z.infer<typeof publicUserSchema>;
+export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
+export type CreateAccessTokenInput = z.infer<
+	typeof createAccessTokenInputSchema
+>;
 export type RegisterInput = z.infer<typeof registerSchema>;
 export type LoginInput = z.infer<typeof loginSchema>;
 export type RefreshSessionInput = z.infer<typeof refreshSessionSchema>;
 export type LogoutInput = z.infer<typeof logoutSchema>;
+export type AuthTokens = z.infer<typeof authTokensSchema>;
+export type AuthResponse = z.infer<typeof authResponseSchema>;

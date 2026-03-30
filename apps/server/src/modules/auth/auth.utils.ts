@@ -1,21 +1,10 @@
-import type { UserRole } from "@voltaze/db";
 import { env } from "@voltaze/env/server";
-import { z } from "zod";
+import {
+	accessTokenPayloadSchema,
+	createAccessTokenInputSchema,
+} from "@voltaze/schema";
 
 const textEncoder = new TextEncoder();
-
-const accessTokenPayloadSchema = z.object({
-	sub: z.string(),
-	sessionId: z.string(),
-	email: z.string().email(),
-	role: z.enum(["ADMIN", "HOST", "USER"]),
-	type: z.literal("access"),
-	iat: z.number().int().nonnegative(),
-	exp: z.number().int().positive(),
-	iss: z.string().min(1),
-});
-
-export type AccessTokenPayload = z.infer<typeof accessTokenPayloadSchema>;
 
 const accessKeyPromise = crypto.subtle.importKey(
 	"raw",
@@ -41,26 +30,20 @@ function decodeBase64Url(value: string) {
 	return Buffer.from(value, "base64url");
 }
 
-function createAccessPayload(input: {
-	userId: string;
-	sessionId: string;
-	email: string;
-	role: UserRole;
-}) {
+export async function createAccessToken(input: unknown) {
+	const parsed = createAccessTokenInputSchema.parse(input);
 	const issuedAt = Math.floor(Date.now() / 1000);
-	return accessTokenPayloadSchema.parse({
-		sub: input.userId,
-		sessionId: input.sessionId,
-		email: input.email,
-		role: input.role,
+	const payload = accessTokenPayloadSchema.parse({
+		sub: parsed.userId,
+		sessionId: parsed.sessionId,
+		email: parsed.email,
+		role: parsed.role,
 		type: "access",
 		iat: issuedAt,
 		exp: issuedAt + env.ACCESS_TOKEN_TTL_SECONDS,
 		iss: env.AUTH_ISSUER,
 	});
-}
 
-async function signJwt(payload: AccessTokenPayload) {
 	const header = encodeBase64Url(JSON.stringify({ alg: "HS256", typ: "JWT" }));
 	const body = encodeBase64Url(JSON.stringify(payload));
 	const unsignedToken = `${header}.${body}`;
@@ -70,18 +53,8 @@ async function signJwt(payload: AccessTokenPayload) {
 		textEncoder.encode(unsignedToken),
 	);
 
-	return `${unsignedToken}.${encodeBase64Url(new Uint8Array(signature))}`;
-}
-
-export async function createAccessToken(input: {
-	userId: string;
-	sessionId: string;
-	email: string;
-	role: UserRole;
-}) {
-	const payload = createAccessPayload(input);
 	return {
-		token: await signJwt(payload),
+		token: `${unsignedToken}.${encodeBase64Url(new Uint8Array(signature))}`,
 		expiresAt: new Date(payload.exp * 1000),
 	};
 }
