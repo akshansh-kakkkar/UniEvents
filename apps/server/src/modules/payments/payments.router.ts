@@ -23,21 +23,18 @@ export function createPaymentsRouter(): Router {
 	router.get(
 		"/",
 		requireAuth,
-		requireRoles("ADMIN", "HOST"),
 		validatePipe({ query: paymentFilterSchema }),
 		asyncHandler((req, res) => paymentsController.list(req, res)),
 	);
 	router.get(
 		"/:id",
 		requireAuth,
-		requireRoles("ADMIN", "HOST"),
 		validatePipe({ params: idParamSchema }),
 		asyncHandler((req, res) => paymentsController.getById(req, res)),
 	);
 	router.post(
 		"/",
 		requireAuth,
-		requireRoles("ADMIN", "HOST"),
 		validatePipe({ body: createPaymentSchema }),
 		asyncHandler((req, res) => paymentsController.create(req, res)),
 	);

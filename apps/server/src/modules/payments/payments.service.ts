@@ -1,4 +1,4 @@
-import { type Prisma, prisma, type UserRole } from "@voltaze/db";
+import { Prisma, prisma, type UserRole } from "@voltaze/db";
 import type {
 	CreatePaymentInput,
 	PaymentFilterInput,
@@ -6,7 +6,12 @@ import type {
 	UpdatePaymentInput,
 } from "@voltaze/schema";
 
-import { BadRequestError, NotFoundError } from "@/common/exceptions/app-error";
+import {
+	BadRequestError,
+	ConflictError,
+	ForbiddenError,
+	NotFoundError,
+} from "@/common/exceptions/app-error";
 
 type PaymentActor = {
 	userId: string;
@@ -53,9 +58,19 @@ export class PaymentsService {
 			return {};
 		}
 
+		if (actor.role === "HOST") {
+			return {
+				order: {
+					event: {
+						userId: actor.userId,
+					},
+				},
+			};
+		}
+
 		return {
 			order: {
-				event: {
+				attendee: {
 					userId: actor.userId,
 				},
 			},
@@ -102,8 +117,12 @@ export class PaymentsService {
 			deletedAt: null,
 		};
 
-		if (!this.canManageAll(actor)) {
+		if (actor.role === "HOST") {
 			orderWhere.event = {
+				userId: actor.userId,
+			};
+		} else if (actor.role === "USER") {
+			orderWhere.attendee = {
 				userId: actor.userId,
 			};
 		}
@@ -116,10 +135,30 @@ export class PaymentsService {
 			throw new NotFoundError("Order not found");
 		}
 
-		return prisma.payment.create({ data: input });
+		if (order.status !== "PENDING") {
+			throw new BadRequestError("Can only create payments for pending orders");
+		}
+
+		try {
+			return await prisma.payment.create({ data: input });
+		} catch (error) {
+			if (error instanceof Prisma.PrismaClientKnownRequestError) {
+				if (error.code === "P2002") {
+					throw new ConflictError(
+						"A payment already exists for this order or transaction",
+					);
+				}
+			}
+
+			throw error;
+		}
 	}
 
 	async update(id: string, input: UpdatePaymentInput, actor: PaymentActor) {
+		if (actor.role === "USER") {
+			throw new ForbiddenError("Users cannot update payment records directly");
+		}
+
 		await this.getById(id, actor);
 		const { orderId: _ignoredOrderId, gatewayMeta, ...rest } = input;
 		const data = {
