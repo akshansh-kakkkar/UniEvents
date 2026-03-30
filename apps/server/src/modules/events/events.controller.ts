@@ -1,8 +1,13 @@
 import {
 	createEventSchema,
+	createEventTicketTierSchema,
 	eventFilterSchema,
+	eventTicketTierIdParamsSchema,
+	eventTicketTierParamsSchema,
 	idParamSchema,
+	ticketTierFilterSchema,
 	updateEventSchema,
+	updateEventTicketTierSchema,
 } from "@voltaze/schema";
 import type { Request, Response } from "express";
 
@@ -11,6 +16,14 @@ import type { AuthenticatedRequest } from "@/common/types/auth-request";
 import { eventsService } from "./events.service";
 
 export class EventsController {
+	private getActor(req: Request) {
+		const authReq = req as AuthenticatedRequest;
+		return {
+			userId: authReq.auth.userId,
+			role: authReq.auth.role,
+		};
+	}
+
 	async list(req: Request, res: Response) {
 		const query = eventFilterSchema.parse(req.query);
 		const events = await eventsService.list(query);
@@ -24,21 +37,72 @@ export class EventsController {
 	}
 
 	async create(req: Request, res: Response) {
-		const authReq = req as AuthenticatedRequest;
 		const body = createEventSchema.parse(req.body);
-		const event = await eventsService.create(body, authReq.auth.userId);
+		const event = await eventsService.create(body, this.getActor(req).userId);
 		res.status(201).json(event);
 	}
 
 	async update(req: Request, res: Response) {
-		const authReq = req as AuthenticatedRequest;
 		const params = idParamSchema.parse(req.params);
 		const body = updateEventSchema.parse(req.body);
-		const event = await eventsService.update(params.id, body, {
-			userId: authReq.auth.userId,
-			role: authReq.auth.role,
-		});
+		const event = await eventsService.update(
+			params.id,
+			body,
+			this.getActor(req),
+		);
 		res.status(200).json(event);
+	}
+
+	async listTicketTiers(req: Request, res: Response) {
+		const params = eventTicketTierParamsSchema.parse(req.params);
+		const query = ticketTierFilterSchema.parse(req.query);
+		const ticketTiers = await eventsService.listTicketTiers(
+			params.eventId,
+			query,
+		);
+		res.status(200).json(ticketTiers);
+	}
+
+	async getTicketTierById(req: Request, res: Response) {
+		const params = eventTicketTierIdParamsSchema.parse(req.params);
+		const ticketTier = await eventsService.getTicketTierById(
+			params.eventId,
+			params.tierId,
+		);
+		res.status(200).json(ticketTier);
+	}
+
+	async createTicketTier(req: Request, res: Response) {
+		const params = eventTicketTierParamsSchema.parse(req.params);
+		const body = createEventTicketTierSchema.parse(req.body);
+		const ticketTier = await eventsService.createTicketTier(
+			params.eventId,
+			body,
+			this.getActor(req),
+		);
+		res.status(201).json(ticketTier);
+	}
+
+	async updateTicketTier(req: Request, res: Response) {
+		const params = eventTicketTierIdParamsSchema.parse(req.params);
+		const body = updateEventTicketTierSchema.parse(req.body);
+		const ticketTier = await eventsService.updateTicketTier(
+			params.eventId,
+			params.tierId,
+			body,
+			this.getActor(req),
+		);
+		res.status(200).json(ticketTier);
+	}
+
+	async deleteTicketTier(req: Request, res: Response) {
+		const params = eventTicketTierIdParamsSchema.parse(req.params);
+		await eventsService.deleteTicketTier(
+			params.eventId,
+			params.tierId,
+			this.getActor(req),
+		);
+		res.status(204).send();
 	}
 }
 

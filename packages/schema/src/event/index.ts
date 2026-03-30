@@ -83,6 +83,22 @@ export const eventFilterSchema = z.object({
 	sortOrder: z.enum(["asc", "desc"]).default("desc"),
 });
 
+export const eventTicketTierParamsSchema = z.object({
+	eventId: z.string().cuid(),
+});
+
+export const eventTicketTierIdParamsSchema = z.object({
+	eventId: z.string().cuid(),
+	tierId: z.string().cuid(),
+});
+
+export const ticketTierFilterSchema = z.object({
+	page: z.coerce.number().int().positive().default(1),
+	limit: z.coerce.number().int().positive().max(100).default(20),
+	sortBy: z.enum(["createdAt", "price", "name"]).default("createdAt"),
+	sortOrder: z.enum(["asc", "desc"]).default("desc"),
+});
+
 export const ticketTierSchema = z.object({
 	id: z.string().cuid(),
 	eventId: z.string().cuid(),
@@ -122,8 +138,23 @@ export const updateTicketTierSchema = createTicketTierSchema.partial().extend({
 	salesEnd: z.coerce.date().optional(),
 });
 
+export const createEventTicketTierSchema = createTicketTierSchema.omit({
+	eventId: true,
+});
+
+export const updateEventTicketTierSchema = updateTicketTierSchema.omit({
+	eventId: true,
+});
+
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 export type EventFilterInput = z.infer<typeof eventFilterSchema>;
+export type TicketTierFilterInput = z.infer<typeof ticketTierFilterSchema>;
 export type CreateTicketTierInput = z.infer<typeof createTicketTierSchema>;
 export type UpdateTicketTierInput = z.infer<typeof updateTicketTierSchema>;
+export type CreateEventTicketTierInput = z.infer<
+	typeof createEventTicketTierSchema
+>;
+export type UpdateEventTicketTierInput = z.infer<
+	typeof updateEventTicketTierSchema
+>;
