@@ -40,15 +40,30 @@ export const updatePaymentSchema = createPaymentSchema.partial().extend({
 	gatewayMeta: z.unknown().optional(),
 });
 
+export const razorpayWebhookEventSchema = z.enum([
+	"payment.authorized",
+	"payment.captured",
+	"payment.failed",
+	"payment.refunded",
+]);
+
+export const razorpayPaymentStatusSchema = z.enum([
+	"authorized",
+	"captured",
+	"failed",
+	"refunded",
+	"created",
+]);
+
 export const razorpayWebhookSchema = z.object({
-	event: z.string(),
+	event: razorpayWebhookEventSchema,
 	payload: z.object({
 		payment: z.object({
 			id: z.string(),
 			order_id: z.string(),
 			amount: z.number().int(),
 			currency: z.string(),
-			status: z.string(),
+			status: razorpayPaymentStatusSchema,
 		}),
 	}),
 });

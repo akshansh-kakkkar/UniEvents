@@ -4,6 +4,8 @@ import { z } from "zod";
 
 const DEV_ACCESS_SECRET = "development-access-secret-change-me-12345";
 const DEV_REFRESH_SECRET = "development-refresh-secret-change-me-12345";
+const DEV_RAZORPAY_WEBHOOK_SECRET =
+	"development-razorpay-webhook-secret-change-me-12345";
 
 export const env = createEnv({
 	server: {
@@ -26,6 +28,16 @@ export const env = createEnv({
 				(value) =>
 					process.env.NODE_ENV !== "production" || value !== DEV_REFRESH_SECRET,
 				"JWT_REFRESH_SECRET must be set to a non-default value in production",
+			),
+		RAZORPAY_WEBHOOK_SECRET: z
+			.string()
+			.min(32)
+			.default(DEV_RAZORPAY_WEBHOOK_SECRET)
+			.refine(
+				(value) =>
+					process.env.NODE_ENV !== "production" ||
+					value !== DEV_RAZORPAY_WEBHOOK_SECRET,
+				"RAZORPAY_WEBHOOK_SECRET must be set to a non-default value in production",
 			),
 		ACCESS_TOKEN_TTL_SECONDS: z.coerce.number().int().positive().default(900),
 		REFRESH_TOKEN_TTL_SECONDS: z.coerce

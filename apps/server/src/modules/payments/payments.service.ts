@@ -1,4 +1,4 @@
-import { type Prisma, prisma } from "@voltaze/db";
+import { type Prisma, prisma, type UserRole } from "@voltaze/db";
 import type {
 	CreatePaymentInput,
 	PaymentFilterInput,
@@ -8,40 +8,119 @@ import type {
 
 import { BadRequestError, NotFoundError } from "@/common/exceptions/app-error";
 
+type PaymentActor = {
+	userId: string;
+	role: UserRole;
+};
+
+type WebhookMappedStatus = "PENDING" | "SUCCESS" | "FAILED" | "REFUNDED";
+
+const CUID_REGEX = /^c[a-z0-9]{24}$/i;
+
+function isCuid(value: string) {
+	return CUID_REGEX.test(value);
+}
+
+function mapWebhookEventToPaymentStatus(
+	event: string,
+): WebhookMappedStatus | null {
+	if (event === "payment.authorized") {
+		return "PENDING";
+	}
+
+	if (event === "payment.captured") {
+		return "SUCCESS";
+	}
+
+	if (event === "payment.failed") {
+		return "FAILED";
+	}
+
+	if (event === "payment.refunded") {
+		return "REFUNDED";
+	}
+
+	return null;
+}
+
 export class PaymentsService {
-	async list(input: PaymentFilterInput) {
+	private canManageAll(actor: PaymentActor) {
+		return actor.role === "ADMIN";
+	}
+
+	private buildAccessWhere(actor: PaymentActor): Prisma.PaymentWhereInput {
+		if (this.canManageAll(actor)) {
+			return {};
+		}
+
+		return {
+			order: {
+				event: {
+					userId: actor.userId,
+				},
+			},
+		};
+	}
+
+	async list(input: PaymentFilterInput, actor: PaymentActor) {
 		const { page, limit, sortBy, sortOrder, ...filters } = input;
 		const skip = (page - 1) * limit;
 
+		const where: Prisma.PaymentWhereInput = {
+			...filters,
+			deletedAt: null,
+			...this.buildAccessWhere(actor),
+		};
+
 		return prisma.payment.findMany({
-			where: {
-				...filters,
-				deletedAt: null,
-			},
+			where,
 			orderBy: { [sortBy]: sortOrder },
 			skip,
 			take: limit,
 		});
 	}
 
-	async getById(id: string) {
-		const payment = await prisma.payment.findUnique({ where: { id } });
-		if (!payment || payment.deletedAt)
+	async getById(id: string, actor: PaymentActor) {
+		const payment = await prisma.payment.findFirst({
+			where: {
+				id,
+				deletedAt: null,
+				...this.buildAccessWhere(actor),
+			},
+		});
+
+		if (!payment) {
 			throw new NotFoundError("Payment not found");
+		}
+
 		return payment;
 	}
 
-	async create(input: CreatePaymentInput) {
-		const order = await prisma.order.findUnique({
-			where: { id: input.orderId },
+	async create(input: CreatePaymentInput, actor: PaymentActor) {
+		const orderWhere: Prisma.OrderWhereInput = {
+			id: input.orderId,
+			deletedAt: null,
+		};
+
+		if (!this.canManageAll(actor)) {
+			orderWhere.event = {
+				userId: actor.userId,
+			};
+		}
+
+		const order = await prisma.order.findFirst({
+			where: orderWhere,
 		});
-		if (!order || order.deletedAt) throw new NotFoundError("Order not found");
+
+		if (!order) {
+			throw new NotFoundError("Order not found");
+		}
 
 		return prisma.payment.create({ data: input });
 	}
 
-	async update(id: string, input: UpdatePaymentInput) {
-		await this.getById(id);
+	async update(id: string, input: UpdatePaymentInput, actor: PaymentActor) {
+		await this.getById(id, actor);
 		const { orderId: _ignoredOrderId, gatewayMeta, ...rest } = input;
 		const data = {
 			...rest,
@@ -52,25 +131,96 @@ export class PaymentsService {
 
 	async handleWebhook(input: RazorpayWebhookInput) {
 		const transactionId = input.payload.payment.id;
-		const status = input.payload.payment.status.toLowerCase();
-		const mappedStatus =
-			status === "captured"
-				? "SUCCESS"
-				: status === "failed"
-					? "FAILED"
-					: "PENDING";
+		const orderReference = input.payload.payment.order_id;
+		const mappedStatus = mapWebhookEventToPaymentStatus(input.event);
 
-		const payment = await prisma.payment.findFirst({
+		if (!mappedStatus) {
+			throw new BadRequestError("Unsupported Razorpay webhook event");
+		}
+
+		let payment = await prisma.payment.findFirst({
 			where: { transactionId },
+			include: { order: true },
 		});
-		if (!payment) throw new BadRequestError("Payment transaction not found");
 
-		return prisma.payment.update({
-			where: { id: payment.id },
-			data: {
-				status: mappedStatus,
-				gatewayMeta: input,
-			},
+		if (!payment && isCuid(orderReference)) {
+			payment = await prisma.payment.findFirst({
+				where: {
+					orderId: orderReference,
+					deletedAt: null,
+				},
+				include: { order: true },
+			});
+		}
+
+		if (!payment || payment.deletedAt) {
+			throw new BadRequestError("Payment transaction not found");
+		}
+
+		if (payment.transactionId && payment.transactionId !== transactionId) {
+			throw new BadRequestError("Transaction ID mismatch for payment");
+		}
+
+		if (payment.amount !== input.payload.payment.amount) {
+			throw new BadRequestError("Webhook payment amount mismatch");
+		}
+
+		if (
+			payment.currency.toUpperCase() !==
+			input.payload.payment.currency.toUpperCase()
+		) {
+			throw new BadRequestError("Webhook payment currency mismatch");
+		}
+
+		if (
+			payment.status === mappedStatus &&
+			payment.transactionId === transactionId
+		) {
+			return payment;
+		}
+
+		if (payment.status === "REFUNDED") {
+			return payment;
+		}
+
+		if (payment.status === "SUCCESS" && mappedStatus !== "REFUNDED") {
+			return payment;
+		}
+
+		const normalizedGatewayMeta = input as Prisma.InputJsonValue;
+
+		return prisma.$transaction(async (tx) => {
+			const updatedPayment = await tx.payment.update({
+				where: { id: payment.id },
+				data: {
+					status: mappedStatus,
+					transactionId,
+					gatewayMeta: normalizedGatewayMeta,
+				},
+			});
+
+			if (mappedStatus === "SUCCESS") {
+				await tx.order.update({
+					where: { id: payment.orderId },
+					data: { status: "COMPLETED" },
+				});
+			}
+
+			if (mappedStatus === "REFUNDED") {
+				await tx.order.update({
+					where: { id: payment.orderId },
+					data: { status: "CANCELLED" },
+				});
+			}
+
+			if (mappedStatus === "FAILED" && payment.order.status !== "COMPLETED") {
+				await tx.order.update({
+					where: { id: payment.orderId },
+					data: { status: "CANCELLED" },
+				});
+			}
+
+			return updatedPayment;
 		});
 	}
 }

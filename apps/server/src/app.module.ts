@@ -21,7 +21,13 @@ export function createApp(): Express {
 	);
 	app.use(requestIdMiddleware);
 	app.use(loggerMiddleware);
-	app.use(express.json());
+	app.use(
+		express.json({
+			verify: (req, _res, buf) => {
+				(req as { rawBody?: string }).rawBody = buf.toString("utf8");
+			},
+		}),
+	);
 
 	app.get("/health", (_req, res) => {
 		res.status(200).json({ status: "ok", timestamp: new Date().toISOString() });
