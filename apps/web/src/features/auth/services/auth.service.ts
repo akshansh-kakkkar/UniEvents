@@ -55,6 +55,23 @@ export const authService = {
 	},
 
 	/**
+	 * Start a Google sign-in flow
+	 */
+	async signInWithGoogle() {
+		const authClient = getAuthClient();
+		const { data, error } = await authClient.signIn.social({
+			provider: "google",
+			callbackURL: window.location.origin,
+		});
+
+		if (error) {
+			throw error;
+		}
+
+		return data;
+	},
+
+	/**
 	 * Logout the current user
 	 */
 	async logout(): Promise<void> {
