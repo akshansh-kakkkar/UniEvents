@@ -2,7 +2,6 @@
 
 import type { EventFilterInput } from "@voltaze/schema";
 import { ArrowRight, Calendar, MapPin, Users } from "lucide-react";
-import type { Route } from "next";
 import Link from "next/link";
 import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
@@ -57,7 +56,7 @@ export function EventsNearYou() {
 	};
 
 	const { data, isLoading } = useEvents(getApiFilters());
-	const events = data?.data || [];
+	const events = (data?.data || []).slice(0, 6);
 
 	const formatDate = (date: Date | string) => {
 		return new Date(date).toLocaleDateString("en-US", {
@@ -70,23 +69,37 @@ export function EventsNearYou() {
 	return (
 		<section className="w-full bg-[#EBF3FF] py-20">
 			<div className="mx-auto max-w-[1280px] px-6">
-				<div className="mb-10 text-center md:text-left">
-					<h2 className="mb-3 font-extrabold text-4xl text-black tracking-tighter md:text-6xl">
-						Events Happening <span className="text-[#030370]">Near You</span>
-					</h2>
-					<p className="font-semibold text-lg text-slate-400 md:text-xl">
-						Handpicked Events Across The Cities For You. All For You Mood And
-						Vibes.
-					</p>
+				<div className="mb-10 flex flex-col justify-between gap-6 md:flex-row md:items-end">
+					<div className="text-center md:text-left">
+						<h2 className="mb-3 font-extrabold text-4xl text-black tracking-tighter md:text-6xl">
+							Events Happening <span className="text-[#030370]">Near You</span>
+						</h2>
+						<p className="font-semibold text-lg text-slate-400 md:text-xl">
+							Handpicked Events Across The Cities For You. All For You Mood And
+							Vibes.
+						</p>
+					</div>
+					<div className="flex justify-center md:justify-end">
+						<Button
+							asChild
+							variant="outline"
+							className="rounded-full border-slate-200 bg-white px-6 font-bold text-slate-600 transition-all hover:border-[#030370] hover:text-[#030370]"
+						>
+							<Link href="/events">
+								Explore All Events
+								<ArrowRight size={16} className="ml-2" />
+							</Link>
+						</Button>
+					</div>
 				</div>
 
-				<div className="-mx-6 mb-12 flex gap-3 overflow-x-auto px-6 pb-4 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:px-0 [&::-webkit-scrollbar]:hidden">
+				<div className="mb-12 flex flex-wrap gap-3">
 					{FILTERS.map((filter) => (
 						<Button
 							key={filter.id}
 							variant={activeFilter === filter.id ? "default" : "outline"}
 							className={cn(
-								"shrink-0 rounded-full px-6 font-bold text-base transition-all",
+								"rounded-full px-6 font-bold text-base transition-all",
 								activeFilter === filter.id
 									? "border-[#030370] bg-[#030370] text-white hover:bg-[#030370]/90"
 									: "border-slate-200 bg-white text-slate-600 hover:border-[#030370] hover:text-[#030370]",

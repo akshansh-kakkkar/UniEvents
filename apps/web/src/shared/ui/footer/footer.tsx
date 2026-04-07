@@ -55,13 +55,13 @@ export function Footer() {
 						<h3 className="mb-6 font-bold text-xl">Account</h3>
 						<div className="flex flex-col gap-4">
 							<Link
-								href="/register"
+								href={"/register" as any}
 								className="font-medium text-blue-200 transition-colors hover:text-white"
 							>
 								Sign Up Free
 							</Link>
 							<Link
-								href="/login"
+								href={"/login" as any}
 								className="font-medium text-blue-200 transition-colors hover:text-white"
 							>
 								Log in
@@ -79,7 +79,7 @@ export function Footer() {
 								My Passes
 							</Link>
 							<Link
-								href="/login"
+								href={"/login" as any}
 								className="font-medium text-blue-200 transition-colors hover:text-white"
 							>
 								Profile Settings
@@ -97,10 +97,25 @@ export function Footer() {
 								Help Centre
 							</Link>
 							<Link
-								href="/events"
+								// biome-ignore lint/suspicious/noExplicitAny: Workaround for Next.js 15 static route typing
+								href={"/refund" as any}
 								className="font-medium text-blue-200 transition-colors hover:text-white"
 							>
 								Refund Policy
+							</Link>
+							<Link
+								// biome-ignore lint/suspicious/noExplicitAny: Workaround for Next.js 15 static route typing
+								href={"/privacy" as any}
+								className="font-medium text-blue-200 transition-colors hover:text-white"
+							>
+								Privacy Policy
+							</Link>
+							<Link
+								// biome-ignore lint/suspicious/noExplicitAny: Workaround for Next.js 15 static route typing
+								href={"/terms" as any}
+								className="font-medium text-blue-200 transition-colors hover:text-white"
+							>
+								Terms of Service
 							</Link>
 							<Link
 								href="/events"
@@ -135,13 +150,25 @@ export function Footer() {
 				<div className="flex flex-col items-center justify-between gap-4 font-medium text-blue-200 text-sm md:flex-row">
 					<div>© {new Date().getFullYear()} Voltaze. All rights reserved.</div>
 					<div className="flex items-center gap-6">
-						<Link href="/events" className="transition-colors hover:text-white">
+						<Link 
+							// biome-ignore lint/suspicious/noExplicitAny: Workaround for Next.js 15 static route typing
+							href={"/privacy" as any} 
+							className="transition-colors hover:text-white"
+						>
 							Privacy Policy
 						</Link>
-						<Link href="/events" className="transition-colors hover:text-white">
+						<Link 
+							// biome-ignore lint/suspicious/noExplicitAny: Workaround for Next.js 15 static route typing
+							href={"/terms" as any} 
+							className="transition-colors hover:text-white"
+						>
 							Terms of Service
 						</Link>
-						<Link href="/events" className="transition-colors hover:text-white">
+						<Link 
+							// biome-ignore lint/suspicious/noExplicitAny: Workaround for Next.js 15 static route typing
+							href={"/privacy" as any} 
+							className="transition-colors hover:text-white"
+						>
 							Cookie Policy
 						</Link>
 					</div>

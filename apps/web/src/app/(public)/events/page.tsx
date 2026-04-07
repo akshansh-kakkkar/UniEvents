@@ -1,6 +1,9 @@
 import { MapPin, Search } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { AllEventsList } from "@/features/events/components/all-events-list/all-events-list";
+
+import { Navbar } from "@/shared/ui/navbar";
 
 export default async function EventsPage({
 	searchParams,
@@ -9,8 +12,10 @@ export default async function EventsPage({
 }) {
 	const params = await searchParams;
 	return (
-		<div className="container mx-auto px-4 py-8">
-			<div className="flex flex-col gap-8">
+		<div className="min-h-screen bg-[#f8fbff]">
+			<Navbar />
+			<div className="container mx-auto px-4 pt-24 pb-12">
+				<div className="flex flex-col gap-8">
 				<div className="flex flex-col gap-2">
 					<h1 className="font-bold text-3xl tracking-tight">Search Results</h1>
 					<p className="text-muted-foreground">
@@ -40,10 +45,7 @@ export default async function EventsPage({
 					</CardContent>
 				</Card>
 
-				<div className="flex flex-col items-center gap-4 py-12">
-					<p className="text-muted-foreground italic">
-						No events found yet. The backend integration is being developed.
-					</p>
+				<AllEventsList searchParams={await searchParams} />
 				</div>
 			</div>
 		</div>

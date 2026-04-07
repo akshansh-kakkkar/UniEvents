@@ -46,7 +46,7 @@ export function GroupBooking() {
 							variant="outline"
 							className="h-16 rounded-full border-white/20 px-10 font-bold text-lg text-white backdrop-blur-sm transition-all hover:bg-white/10"
 						>
-							<Link href="/events">Learn More</Link>
+							<Link href="/faq?tab=group-booking">Learn More</Link>
 						</Button>
 					</div>
 				</div>

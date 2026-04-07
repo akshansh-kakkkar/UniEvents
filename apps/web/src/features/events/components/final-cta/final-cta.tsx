@@ -30,7 +30,7 @@ export function FinalCTA() {
 						size="lg"
 						className="h-16 rounded-full border-slate-200 bg-white px-12 font-bold text-slate-600 text-xl transition-all hover:border-[#030370] hover:text-[#030370] active:scale-95"
 					>
-						<Link href="/events">Create Free Events</Link>
+						<Link href="/host/events/new">Create Free Events</Link>
 					</Button>
 				</div>
 
