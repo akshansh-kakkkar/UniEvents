@@ -58,20 +58,17 @@ export const authService = {
 	 * Start a Google sign-in flow
 	 */
 	async signInWithGoogle() {
-		const authClient = getAuthClient();
 		const callbackURL = `${window.location.origin}/`;
 		const errorCallbackURL = `${window.location.origin}/login`;
-		const { data, error } = await authClient.signIn.social({
-			provider: "google",
-			callbackURL,
-			errorCallbackURL,
-		});
+		const redirectUrl = new URL(
+			`${getActiveBackendUrl()}/api/auth/sign-in/social`,
+		);
+		redirectUrl.searchParams.set("provider", "google");
+		redirectUrl.searchParams.set("callbackURL", callbackURL);
+		redirectUrl.searchParams.set("errorCallbackURL", errorCallbackURL);
 
-		if (error) {
-			throw error;
-		}
-
-		return data;
+		window.location.assign(redirectUrl.toString());
+		return null;
 	},
 
 	/**
