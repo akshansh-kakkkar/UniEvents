@@ -77,6 +77,31 @@ export function useLogin() {
 }
 
 /**
+ * Hook for Google login
+ */
+export function useGoogleSignIn() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: authService.signInWithGoogle,
+		onSuccess: () => {
+			// Google sign-in now redirects to the backend OAuth endpoint.
+			// No session payload is returned to this callback in the current page context.
+		},
+		onError: (error: unknown) => {
+			notifications.show({
+				title: "Google sign-in failed",
+				message: getApiErrorMessage(
+					error,
+					"Google sign-in is not configured correctly",
+				),
+				color: "red",
+			});
+		},
+	});
+}
+
+/**
  * Hook for user logout
  */
 export function useLogout() {
