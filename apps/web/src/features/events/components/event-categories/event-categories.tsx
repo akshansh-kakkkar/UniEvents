@@ -7,12 +7,15 @@ import {
 	Users,
 } from "lucide-react";
 import Link from "next/link";
+import { useRef } from "react";
+import { Button } from "@/components/ui/button";
 
 const CATEGORIES = [
 	{
 		id: "tech-dev",
 		title: "Tech & Dev",
-		count: "234 events",
+		keywords: ["tech", "dev", "hackathon", "code"],
+		defaultCount: "234 events",
 		Icon: Laptop,
 		bg: "bg-slate-100",
 		color: "text-slate-900",
@@ -20,15 +23,17 @@ const CATEGORIES = [
 	{
 		id: "music",
 		title: "Music",
-		count: "187 events",
+		keywords: ["music", "concert", "dj", "band", "festival"],
+		defaultCount: "187 events",
 		Icon: Music,
-		bg: "bg-slate-100",
+		bg: "bg-white",
 		color: "text-slate-900",
 	},
 	{
 		id: "college-fests",
 		title: "College Fests",
-		count: "40 events",
+		keywords: ["fest", "college", "university", "campus"],
+		defaultCount: "40 events",
 		Icon: GraduationCap,
 		bg: "bg-orange-50",
 		color: "text-orange-500",
@@ -36,7 +41,8 @@ const CATEGORIES = [
 	{
 		id: "workshops",
 		title: "Workshops",
-		count: "158 events",
+		keywords: ["workshop", "masterclass", "learn", "training", "course"],
+		defaultCount: "158 events",
 		Icon: Users,
 		bg: "bg-gray-100",
 		color: "text-gray-600",
@@ -44,7 +50,8 @@ const CATEGORIES = [
 	{
 		id: "art-culture",
 		title: "Art & Culture",
-		count: "80 events",
+		keywords: ["art", "culture", "comedy", "standup", "theater", "exhibition"],
+		defaultCount: "80 events",
 		Icon: Palette,
 		bg: "bg-pink-50",
 		color: "text-pink-500",
@@ -52,7 +59,8 @@ const CATEGORIES = [
 	{
 		id: "meetups",
 		title: "Meetups",
-		count: "108 events",
+		keywords: ["meetup", "networking", "community", "social"],
+		defaultCount: "108 events",
 		Icon: UserPlus,
 		bg: "bg-yellow-50",
 		color: "text-yellow-600",
@@ -60,6 +68,16 @@ const CATEGORIES = [
 ];
 
 export function EventCategories() {
+	const scrollRef = useRef<HTMLDivElement>(null);
+
+	const scroll = (direction: "left" | "right") => {
+		if (scrollRef.current) {
+			const offset = window.innerWidth < 640 ? 240 : 280; // card width + gap
+			const scrollAmount = direction === "left" ? -offset : offset;
+			scrollRef.current.scrollBy({ left: scrollAmount, behavior: "smooth" });
+		}
+	};
+
 	return (
 		<section className="w-full bg-[#EBF3FF] py-20">
 			<div className="mx-auto max-w-[1280px] px-6">
@@ -72,19 +90,19 @@ export function EventCategories() {
 						<Link
 							key={category.id}
 							href={`/events?category=${category.id}`}
-							className="group flex flex-col items-center rounded-[32px] border border-gray-100 bg-white p-8 transition-all duration-300 hover:-translate-y-2 hover:border-transparent hover:shadow-2xl"
+							className="group flex aspect-square w-56 shrink-0 snap-center flex-col items-center justify-center rounded-[32px] border border-gray-100 bg-white p-4 transition-all duration-300 hover:-translate-y-2 hover:border-transparent hover:shadow-2xl sm:w-64"
 						>
 							<div
 								className={`mb-6 rounded-2xl p-6 transition-transform duration-300 group-hover:scale-110 ${category.bg}`}
 							>
 								<category.Icon
-									className={`h-12 w-12 stroke-[1.5] ${category.color}`}
+									className={`h-10 w-10 stroke-[1.5] sm:h-12 sm:w-12 ${category.color}`}
 								/>
 							</div>
 							<h3 className="mb-2 font-bold text-black text-xl">
 								{category.title}
 							</h3>
-							<span className="font-semibold text-gray-400 text-sm">
+							<span className="text-center font-semibold text-gray-400 text-xs sm:text-sm">
 								{category.count}
 							</span>
 						</Link>

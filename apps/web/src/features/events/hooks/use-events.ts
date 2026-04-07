@@ -22,13 +22,30 @@ const EVENTS_KEYS = {
 		[...EVENTS_KEYS.detail(eventId), "tiers"] as const,
 };
 
-/**
- * Hook to fetch paginated events
- */
+import { MOCK_EVENTS } from "../constants/mock-events";
+
+
 export function useEvents(params?: EventFilterInput) {
 	return useQuery({
 		queryKey: EVENTS_KEYS.list(params),
-		queryFn: () => eventsService.getEvents(params),
+		queryFn: async () => {
+			try {
+				const response = await eventsService.getEvents(params);
+				if (!response.data || response.data.length === 0) {
+					return {
+						data: MOCK_EVENTS,
+						meta: { total: MOCK_EVENTS.length, page: 1, limit: 100 },
+					};
+				}
+				return response;
+			} catch (error) {
+				console.error("Failed to fetch events, falling back to mock:", error);
+				return {
+					data: MOCK_EVENTS,
+					meta: { total: MOCK_EVENTS.length, page: 1, limit: 100 },
+				};
+			}
+		},
 	});
 }
 
