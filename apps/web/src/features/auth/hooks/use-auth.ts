@@ -77,6 +77,30 @@ export function useLogin() {
 }
 
 /**
+ * Hook for Google login
+ */
+export function useGoogleSignIn() {
+	const queryClient = useQueryClient();
+
+	return useMutation({
+		mutationFn: authService.signInWithGoogle,
+		onSuccess: (data) => {
+			queryClient.setQueryData(AUTH_KEYS.currentUser, data?.user ?? null);
+		},
+		onError: (error: unknown) => {
+			notifications.show({
+				title: "Google sign-in failed",
+				message: getApiErrorMessage(
+					error,
+					"Google sign-in is not configured correctly",
+				),
+				color: "red",
+			});
+		},
+	});
+}
+
+/**
  * Hook for user logout
  */
 export function useLogout() {

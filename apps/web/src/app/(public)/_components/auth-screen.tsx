@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { type FormEvent, useState } from "react";
-import { useLogin, useRegister } from "@/features/auth";
+import { useGoogleSignIn, useLogin, useRegister } from "@/features/auth";
 
 type AuthMode = "login" | "signup" | "register";
 
@@ -112,6 +112,7 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 	const isSignup = mode === "signup" || mode === "register";
 	const loginMutation = useLogin();
 	const registerMutation = useRegister();
+	const googleMutation = useGoogleSignIn();
 	const mutation = mode === "login" ? loginMutation : registerMutation;
 
 	const [email, setEmail] = useState("");
@@ -144,6 +145,10 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 		};
 
 		await mutation.mutateAsync(payload);
+	}
+
+	async function handleGoogleSignIn() {
+		await googleMutation.mutateAsync();
 	}
 
 	return (
@@ -351,10 +356,14 @@ export function AuthScreen({ mode }: { mode: AuthMode }) {
 
 								<button
 									type="button"
+									disabled={googleMutation.isPending}
+									onClick={handleGoogleSignIn}
 									className="inline-flex h-11 w-full items-center justify-center gap-3 rounded-xl border border-slate-200 bg-white px-5 font-semibold text-slate-800 transition-colors hover:border-slate-300 hover:bg-slate-50"
 								>
 									<GoogleMark />
-									Continue with Google
+									{googleMutation.isPending
+										? "Please wait..."
+										: "Continue with Google"}
 								</button>
 							</form>
 						</div>
