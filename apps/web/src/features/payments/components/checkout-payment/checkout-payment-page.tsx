@@ -2,6 +2,7 @@
 
 import { useQueryClient } from "@tanstack/react-query";
 import { env } from "@voltaze/env/web";
+import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { attendeesService } from "@/features/attendees/services/attendees.service";
@@ -67,7 +68,7 @@ export function CheckoutPaymentPage({ slug }: { slug: string }) {
 				color: "blue",
 			});
 			startTopLoader();
-			router.replace(`/events/${slug}/checkout`);
+			router.replace(`/events/${slug}/checkout` as Route);
 			return;
 		}
 	}, [draftState, router, slug, user]);
@@ -79,7 +80,7 @@ export function CheckoutPaymentPage({ slug }: { slug: string }) {
 
 		if (event.type !== "PAID") {
 			startTopLoader();
-			router.replace(`/events/${event.slug}`);
+			router.replace(`/events/${event.slug}` as Route);
 		}
 	}, [event, router]);
 
@@ -171,7 +172,7 @@ export function CheckoutPaymentPage({ slug }: { slug: string }) {
 							color: "green",
 						});
 						startTopLoader();
-						router.push(`/events/${event.slug}`);
+						router.push(`/events/${event.slug}` as Route);
 					} catch (error) {
 						showNotification({
 							title: "Payment verification failed",

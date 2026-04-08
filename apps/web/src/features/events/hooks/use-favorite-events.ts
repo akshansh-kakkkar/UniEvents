@@ -1,8 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCurrentUser } from "@/features/auth";
 
-const FAVORITES_STORAGE_KEY = "voltaze:favourite-event-ids";
+const FAVORITES_STORAGE_KEY_PREFIX = "voltaze:favourite-event-ids";
+const DEFAULT_SCOPE = "guest";
+
+function getFavoritesStorageKey(scope: string) {
+	return `${FAVORITES_STORAGE_KEY_PREFIX}:${scope}`;
+}
 
 function parseStoredFavorites(raw: string | null): Set<string> {
 	if (!raw) {
@@ -22,28 +28,38 @@ function parseStoredFavorites(raw: string | null): Set<string> {
 }
 
 export function useFavoriteEvents() {
+	const { data: user } = useCurrentUser();
+	const userScope = user?.id || DEFAULT_SCOPE;
 	const [favoriteIds, setFavoriteIds] = useState<Set<string>>(new Set());
 
 	useEffect(() => {
 		setFavoriteIds(
-			parseStoredFavorites(localStorage.getItem(FAVORITES_STORAGE_KEY)),
+			parseStoredFavorites(
+				localStorage.getItem(getFavoritesStorageKey(userScope)),
+			),
 		);
-	}, []);
+	}, [userScope]);
 
-	const toggleFavorite = useCallback((eventId: string) => {
-		setFavoriteIds((prev) => {
-			const next = new Set(prev);
+	const toggleFavorite = useCallback(
+		(eventId: string) => {
+			setFavoriteIds((prev) => {
+				const next = new Set(prev);
 
-			if (next.has(eventId)) {
-				next.delete(eventId);
-			} else {
-				next.add(eventId);
-			}
+				if (next.has(eventId)) {
+					next.delete(eventId);
+				} else {
+					next.add(eventId);
+				}
 
-			localStorage.setItem(FAVORITES_STORAGE_KEY, JSON.stringify([...next]));
-			return next;
-		});
-	}, []);
+				localStorage.setItem(
+					getFavoritesStorageKey(userScope),
+					JSON.stringify([...next]),
+				);
+				return next;
+			});
+		},
+		[userScope],
+	);
 
 	const isFavorite = useCallback(
 		(eventId: string) => favoriteIds.has(eventId),

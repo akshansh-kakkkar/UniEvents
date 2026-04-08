@@ -1,13 +1,18 @@
 "use client";
 
 import {
+	Bell,
+	CheckCheck,
 	ChevronDown,
 	Globe,
+	Heart,
 	LocateFixed,
 	LogOut,
 	MapPin,
 	Search,
+	Trash2,
 	UserCircle2,
+	X,
 } from "lucide-react";
 import Image from "next/image";
 import Link from "next/link";
@@ -19,6 +24,15 @@ import { useCurrentUser, useLogout } from "@/features/auth";
 import { SearchSuggestions } from "@/features/events/components/search-suggestions/search-suggestions";
 import { useEventSearch } from "@/features/events/hooks/use-event-search";
 import { useLiveLocation } from "@/shared/hooks/use-live-location";
+import {
+	type AppNotification,
+	clearNotifications,
+	getUnreadNotificationCount,
+	markAllNotificationsAsRead,
+	markNotificationAsRead,
+	setNotificationScope,
+	subscribeNotifications,
+} from "@/shared/lib/notification-center";
 import { startTopLoader } from "@/shared/lib/top-loader-events";
 
 function getProfileInitial(
@@ -27,6 +41,24 @@ function getProfileInitial(
 ) {
 	const base = name?.trim() || email?.trim() || "U";
 	return base.charAt(0).toUpperCase();
+}
+
+function formatNotificationTime(dateIso: string) {
+	const now = Date.now();
+	const ts = new Date(dateIso).getTime();
+	const diffMinutes = Math.max(1, Math.floor((now - ts) / (1000 * 60)));
+
+	if (diffMinutes < 60) {
+		return `${diffMinutes}m ago`;
+	}
+
+	const diffHours = Math.floor(diffMinutes / 60);
+	if (diffHours < 24) {
+		return `${diffHours}h ago`;
+	}
+
+	const diffDays = Math.floor(diffHours / 24);
+	return `${diffDays}d ago`;
 }
 
 interface NavbarProps {
@@ -44,6 +76,9 @@ export function Navbar({ minimal = false }: NavbarProps) {
 	const [isLocationMenuOpen, setIsLocationMenuOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState("");
 	const [showSearchSuggestions, setShowSearchSuggestions] = useState(false);
+	const [isNotificationsOpen, setIsNotificationsOpen] = useState(false);
+	const [notifications, setNotifications] = useState<AppNotification[]>([]);
+	const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
 	const { location, setLocation, detectLocation, isLocating } = useLiveLocation(
 		{
 			fallback: "Patiala",
@@ -54,6 +89,7 @@ export function Navbar({ minimal = false }: NavbarProps) {
 	const locationMenuRef = useRef<HTMLDivElement | null>(null);
 	const profileCloseTimerRef = useRef<number | null>(null);
 	const searchMenuRef = useRef<HTMLDivElement | null>(null);
+	const notificationsPanelRef = useRef<HTMLElement | null>(null);
 
 	const { suggestions, isLoading: isSuggestionsLoading } =
 		useEventSearch(searchQuery);
@@ -104,6 +140,21 @@ export function Navbar({ minimal = false }: NavbarProps) {
 	}, []);
 
 	useEffect(() => {
+		setNotificationScope(user?.id);
+	}, [user?.id]);
+
+	useEffect(() => {
+		const unsubscribe = subscribeNotifications((items) => {
+			setNotifications(items);
+			setUnreadNotificationCount(getUnreadNotificationCount());
+		});
+
+		return () => {
+			unsubscribe();
+		};
+	}, []);
+
+	useEffect(() => {
 		const handleOutsideClick = (event: MouseEvent) => {
 			const target = event.target as Node;
 			const isInsideDesktopMenu = profileMenuRef.current?.contains(target);
@@ -128,6 +179,34 @@ export function Navbar({ minimal = false }: NavbarProps) {
 			document.removeEventListener("mousedown", handleOutsideClick);
 		};
 	}, []);
+
+	useEffect(() => {
+		if (!isNotificationsOpen) {
+			return;
+		}
+
+		const handleOutsideClick = (event: MouseEvent) => {
+			const target = event.target as Node;
+			const isInsidePanel = notificationsPanelRef.current?.contains(target);
+
+			if (!isInsidePanel) {
+				setIsNotificationsOpen(false);
+			}
+		};
+
+		const handleEsc = (event: KeyboardEvent) => {
+			if (event.key === "Escape") {
+				setIsNotificationsOpen(false);
+			}
+		};
+
+		document.addEventListener("mousedown", handleOutsideClick);
+		document.addEventListener("keydown", handleEsc);
+		return () => {
+			document.removeEventListener("mousedown", handleOutsideClick);
+			document.removeEventListener("keydown", handleEsc);
+		};
+	}, [isNotificationsOpen]);
 
 	const handleSearch = () => {
 		const params = new URLSearchParams();
@@ -209,6 +288,16 @@ export function Navbar({ minimal = false }: NavbarProps) {
 		setIsMobileProfileMenuOpen(false);
 		closeMobileMenu();
 		logoutMutation.mutate();
+	};
+
+	const handleOpenNotifications = () => {
+		setIsNotificationsOpen(true);
+		markAllNotificationsAsRead();
+	};
+
+	const handleNavigateToLikedEvents = () => {
+		startTopLoader();
+		window.location.assign("/liked-events");
 	};
 
 	const profileMenuItems = useMemo(() => {
@@ -390,6 +479,29 @@ export function Navbar({ minimal = false }: NavbarProps) {
 				)}
 
 				<div className="hidden items-center gap-3 md:flex">
+					<button
+						type="button"
+						onClick={handleNavigateToLikedEvents}
+						className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#ccd5f7] hover:bg-[#f7f9ff] hover:text-rose-500"
+						aria-label="Open liked events"
+					>
+						<Heart className="h-4 w-4" />
+					</button>
+
+					<button
+						type="button"
+						onClick={handleOpenNotifications}
+						className="relative inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#ccd5f7] hover:bg-[#f7f9ff] hover:text-[#030370]"
+						aria-label="Open notifications"
+					>
+						<Bell className="h-4 w-4" />
+						{unreadNotificationCount > 0 && (
+							<span className="absolute top-1 right-1 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 font-bold text-[10px] text-white">
+								{unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+							</span>
+						)}
+					</button>
+
 					{user ? (
 						<div ref={profileMenuRef} className="relative">
 							<button
@@ -518,6 +630,29 @@ export function Navbar({ minimal = false }: NavbarProps) {
 
 						<button
 							type="button"
+							onClick={handleNavigateToLikedEvents}
+							className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#ccd5f7] hover:bg-[#f7f9ff] hover:text-rose-500"
+							aria-label="Open liked events"
+						>
+							<Heart className="h-4 w-4" />
+						</button>
+
+						<button
+							type="button"
+							onClick={handleOpenNotifications}
+							className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#ccd5f7] hover:bg-[#f7f9ff] hover:text-[#030370]"
+							aria-label="Open notifications"
+						>
+							<Bell className="h-4 w-4" />
+							{unreadNotificationCount > 0 && (
+								<span className="absolute top-1 right-1 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 font-bold text-[10px] text-white">
+									{unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+								</span>
+							)}
+						</button>
+
+						<button
+							type="button"
 							onClick={() => setIsMobileProfileMenuOpen((prev) => !prev)}
 							className="flex items-center gap-1 rounded-full border border-slate-200 bg-white py-1 pr-1.5 pl-1"
 							aria-label="Toggle profile menu"
@@ -616,6 +751,29 @@ export function Navbar({ minimal = false }: NavbarProps) {
 
 						<button
 							type="button"
+							onClick={handleNavigateToLikedEvents}
+							className="inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#ccd5f7] hover:bg-[#f7f9ff] hover:text-rose-500"
+							aria-label="Open liked events"
+						>
+							<Heart className="h-4 w-4" />
+						</button>
+
+						<button
+							type="button"
+							onClick={handleOpenNotifications}
+							className="relative inline-flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-600 transition-colors hover:border-[#ccd5f7] hover:bg-[#f7f9ff] hover:text-[#030370]"
+							aria-label="Open notifications"
+						>
+							<Bell className="h-4 w-4" />
+							{unreadNotificationCount > 0 && (
+								<span className="absolute top-1 right-1 inline-flex min-h-4 min-w-4 items-center justify-center rounded-full bg-rose-500 px-1 font-bold text-[10px] text-white">
+									{unreadNotificationCount > 9 ? "9+" : unreadNotificationCount}
+								</span>
+							)}
+						</button>
+
+						<button
+							type="button"
 							className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-[#070190] transition-colors hover:border-[#ccd5f7] hover:bg-[#f7f9ff]"
 							onClick={() => window.location.assign("/login")}
 							aria-label="Open login or signup"
@@ -625,6 +783,122 @@ export function Navbar({ minimal = false }: NavbarProps) {
 					</div>
 				)}
 			</div>
+
+			{isNotificationsOpen && (
+				<button
+					type="button"
+					className="fixed inset-x-0 top-16 bottom-0 z-40 bg-black/30"
+					aria-label="Close notifications panel"
+					onClick={() => setIsNotificationsOpen(false)}
+				/>
+			)}
+
+			<aside
+				ref={notificationsPanelRef}
+				className={`fixed top-16 right-0 z-40 h-[calc(100vh-4rem)] w-full max-w-sm border-slate-200 border-l bg-white shadow-2xl transition-transform duration-300 ${
+					isNotificationsOpen ? "translate-x-0" : "translate-x-full"
+				}`}
+				aria-hidden={!isNotificationsOpen}
+			>
+				<div className="flex h-full flex-col">
+					<div className="border-slate-100 border-b px-6 py-5">
+						<div className="flex items-start justify-between gap-3">
+							<div>
+								<h2 className="font-bold text-3xl text-[#10023a]">
+									Notifications
+								</h2>
+								<p className="mt-1 text-[#332a4d] text-sm">
+									Stay up to date on important information
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={() => setIsNotificationsOpen(false)}
+								className="rounded-lg p-2 text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-800"
+								aria-label="Close notifications"
+							>
+								<X className="h-5 w-5" />
+							</button>
+						</div>
+
+						<div className="mt-4 flex items-center gap-2">
+							<button
+								type="button"
+								onClick={() => markAllNotificationsAsRead()}
+								className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 font-semibold text-[#1d2b57] text-xs transition-colors hover:bg-slate-50"
+							>
+								<CheckCheck className="h-3.5 w-3.5" />
+								Mark all read
+							</button>
+							<button
+								type="button"
+								onClick={() => clearNotifications()}
+								className="inline-flex items-center gap-1 rounded-full border border-slate-200 px-3 py-1.5 font-semibold text-[#1d2b57] text-xs transition-colors hover:bg-slate-50"
+							>
+								<Trash2 className="h-3.5 w-3.5" />
+								Clear all
+							</button>
+						</div>
+					</div>
+
+					<div className="flex-1 overflow-y-auto px-4 py-4">
+						{notifications.length === 0 ? (
+							<div className="flex h-full flex-col items-center justify-center px-4 text-center">
+								<div className="mb-4 flex h-20 w-20 items-center justify-center rounded-full bg-[#f2f4ff]">
+									<Bell className="h-9 w-9 text-[#6f77a8]" />
+								</div>
+								<p className="font-bold text-2xl text-[#10023a]">
+									Nothing to see here (yet)!
+								</p>
+								<p className="mt-2 max-w-xs text-[#332a4d] text-lg leading-snug">
+									We&apos;ll be sure to let you know when we have something for
+									you
+								</p>
+							</div>
+						) : (
+							<div className="space-y-3">
+								{notifications.map((item) => (
+									<button
+										key={item.id}
+										type="button"
+										onClick={() => markNotificationAsRead(item.id)}
+										className="w-full rounded-2xl border border-slate-100 bg-white px-4 py-3 text-left shadow-sm transition-colors hover:bg-slate-50"
+									>
+										<div className="flex items-start justify-between gap-3">
+											<div className="min-w-0">
+												<p className="truncate font-semibold text-[#0f1f4d] text-sm">
+													{item.title}
+												</p>
+												{item.message && (
+													<p className="mt-1 line-clamp-2 text-slate-600 text-xs">
+														{item.message}
+													</p>
+												)}
+											</div>
+											<div className="flex items-center gap-2">
+												{!item.isRead && (
+													<span
+														className={`inline-block h-2.5 w-2.5 rounded-full ${
+															item.color === "red"
+																? "bg-rose-500"
+																: item.color === "blue"
+																	? "bg-sky-500"
+																	: "bg-emerald-500"
+														}`}
+													/>
+												)}
+												<span className="whitespace-nowrap text-[11px] text-slate-500">
+													{formatNotificationTime(item.createdAt)}
+												</span>
+											</div>
+										</div>
+									</button>
+								))}
+							</div>
+						)}
+					</div>
+				</div>
+			</aside>
 		</header>
 	);
 }

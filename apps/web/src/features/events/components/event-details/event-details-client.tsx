@@ -90,7 +90,7 @@ export function EventDetailsClient({ slug }: { slug: string }) {
 		}
 
 		startTopLoader();
-		router.push(`/events/${event.slug}/checkout`);
+		router.push(`/events/${event.slug}/checkout` as never);
 	};
 
 	useEffect(() => {

@@ -1,4 +1,5 @@
 import { toast } from "sonner";
+import { addNotification } from "./notification-center";
 
 type NotificationColor = "green" | "red" | "blue";
 
@@ -13,6 +14,8 @@ export function showNotification({
 	message,
 	color,
 }: NotificationOptions) {
+	addNotification({ title, message, color: color ?? "green" });
+
 	if (color === "red") {
 		toast.error(title, { description: message });
 		return;

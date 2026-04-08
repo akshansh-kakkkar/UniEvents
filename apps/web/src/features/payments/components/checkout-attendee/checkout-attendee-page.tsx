@@ -1,5 +1,6 @@
 "use client";
 
+import type { Route } from "next";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
@@ -72,7 +73,7 @@ export function CheckoutAttendeePage({ slug }: { slug: string }) {
 				color: "blue",
 			});
 			startTopLoader();
-			router.replace(`/events/${event.slug}`);
+			router.replace(`/events/${event.slug}` as Route);
 			return;
 		}
 
@@ -126,7 +127,7 @@ export function CheckoutAttendeePage({ slug }: { slug: string }) {
 
 		startTopLoader();
 		router.push(
-			`/events/${event.slug}/checkout/payment?tierId=${selectedTier.id}`,
+			`/events/${event.slug}/checkout/payment?tierId=${selectedTier.id}` as Route,
 		);
 	};
 
