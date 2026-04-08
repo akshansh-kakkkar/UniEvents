@@ -2,7 +2,6 @@
 
 import {
 	Car,
-	Clock,
 	Footprints,
 	Heart,
 	Mail,
@@ -16,6 +15,7 @@ import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useCurrentUser } from "@/features/auth";
+import { showNotification } from "@/shared/lib/notifications";
 import { startTopLoader } from "@/shared/lib/top-loader-events";
 import { Footer } from "@/shared/ui/footer";
 import { Navbar } from "@/shared/ui/navbar";
@@ -34,6 +34,9 @@ export function EventDetailsClient({ slug }: { slug: string }) {
 	const tiers = [...(tiersResponse?.data ?? [])].sort(
 		(a, b) => a.price - b.price,
 	);
+	const paidTier =
+		tiers.find((tier) => tier.price > 0 && tier.soldCount < tier.maxQuantity) ??
+		null;
 	const { data: relatedEventsResponse } = useEvents({
 		page: 1,
 		limit: 8,
@@ -52,23 +55,42 @@ export function EventDetailsClient({ slug }: { slug: string }) {
 		.filter((relatedEvent) => relatedEvent.id !== event?.id)
 		.slice(0, 4);
 
-	const handleBookNowClick = () => {
+	const scrollToTicketOptions = () => {
+		document.getElementById("ticket-options")?.scrollIntoView({
+			behavior: "smooth",
+			block: "start",
+		});
+	};
+
+	const handleBookNowClick = async () => {
 		if (!event) {
 			return;
 		}
 
 		if (!user) {
-			const redirectTo = encodeURIComponent(
-				`/events/${event.slug}#ticket-options`,
-			);
+			const redirectTo = encodeURIComponent(`/events/${event.slug}/checkout`);
 			startTopLoader();
 			router.push(`/login?redirect=${redirectTo}`);
 			return;
 		}
 
-		document
-			.getElementById("ticket-options")
-			?.scrollIntoView({ behavior: "smooth", block: "start" });
+		if (event.type === "FREE") {
+			scrollToTicketOptions();
+			return;
+		}
+
+		if (!paidTier) {
+			scrollToTicketOptions();
+			showNotification({
+				title: "Tickets unavailable",
+				message: "No paid ticket tier is currently available for booking.",
+				color: "red",
+			});
+			return;
+		}
+
+		startTopLoader();
+		router.push(`/events/${event.slug}/checkout`);
 	};
 
 	useEffect(() => {
